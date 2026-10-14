@@ -4,11 +4,34 @@
 
 把 **任务书 → 任意 AI 写分镜 → ComfyUI 自动出图** 串起来，纯 Python 标准库，**零依赖**。
 
+本项目**重点在技术分享**：怎么把「LLM 写分镜」和「ComfyUI 批量出图」接成一条能跑的链，
+以及过程中踩到的坑（见 [开发思路](#开发思路)）。
+
 - **①任务书**：页面内置任务书生成器，填好故事与人物 → 下载一份自包含的 `.md` 任务书
 - **→** 把任务书交给**任意 AI**（ChatGPT / Claude / 本地模型都行），按任务书里的输出协议拿回分镜 md
 - **②生产**：把分镜 md 拖进页面 → 自动填进 Anima 文生图工作流 → 逐格出图，结果按章节落盘
 
 ![任务书生成器](screenshots/1_任务书生成器.png)
+
+## 技术路径
+
+```mermaid
+flowchart LR
+    TB["任务书生成器<br/>static/taskbook"] -->|"① 下载任务书 md"| AI["任意 AI"]
+    AI -->|"② 分镜 md（panels JSON）"| UI["流水线页面<br/>static/index.html"]
+    UI -->|"③ POST /api/produce/start"| SRV["anima_pipeline.py<br/>ThreadingHTTPServer"]
+    SRV -->|"④ POST /prompt"| CF["ComfyUI :8188"]
+    CF -->|"⑤ /queue + /history + /view"| SRV
+    SRV -->|"⑥ 轮询 /api/jobs"| UI
+    SRV --> OUT["结果/第N章/*.png<br/>+ manifest.json"]
+```
+
+文字版：**任务书生成器**（纯静态页）产出 md → 使用者交给**任意 AI** 拿回分镜 md →
+**流水线页面**把它 POST 给 **`anima_pipeline.py`**（纯标准库 HTTP 服务）→ 后端解析 JSON 块、
+拼装 ComfyUI 工作流并 `POST /prompt` → 轮询 `/queue`、`/history`，再用 `/view` 把图拉回来落盘 →
+前端每 1.5s 轮询 `/api/jobs` 更新进度。
+
+整条链上没有数据库、没有框架、没有 pip 依赖，状态全在内存里。
 
 ## 你需要有什么
 
@@ -71,6 +94,78 @@ JSON 代码块就行，其余文字随意。
 ```
 
 ![生产结果](screenshots/3_生产结果.png)
+
+## 开发思路
+
+### 为什么做成「独立网页 + HTTP 驱动 ComfyUI」，而不是一个自定义节点
+
+- 任务书那一环跟 ComfyUI 毫无关系，塞进节点里只能做成很别扭的多步 UI；
+- ComfyUI 的 HTTP API（`/prompt`、`/queue`、`/history`、`/view`）足够驱动整条出图链，
+  不需要写节点、也不需要装任何 ComfyUI 插件；
+- 独立进程才能顺手把「引擎开 / 关」也管起来（节点做不到，它跑在引擎里面）。
+- 代价只是多敲一行 `python anima_pipeline.py`。
+
+### AI 环节留空，工具只干两件事
+
+不绑定任何 LLM API。工具负责「生成一份自描述的任务书」和「吃分镜 md 出图」，
+中间那一步完全交给使用者自己选（网页版还是本地模型都行）。
+好处是把**提示词工程**和**出图工程**解耦——**换 AI 不用改代码，调提示词不用碰工作流**。
+
+### 中间格式：人类可读的 Markdown + 机器可解析的 JSON 块
+
+分镜产物是「一份 md，里面有一个 json 代码块（围栏标成 json），块里是 `panels` 数组」：
+
+- 对 AI 友好：任务书里的规则和 JSON schema 都能直接作为上下文；
+- 对人友好：出图前可以直接手改某一格的 `prompt` / `seed` 再重跑；
+- 对程序友好：从 md 里抓出 json 代码块 → `json.loads` 就完事，不需要写解析器、
+  也不怕 AI 前后多写几段说明文字。
+- 另外支持 `<!-- PIPELINE-PANELS-BEGIN/END -->` 标记做精确定位（可选）。
+
+### 动态重建工作流的「加载链」
+
+`workflow_template.json` 是一份普通 ComfyUI **API 格式**工作流。出图前，程序把模板里的模型加载节点
+（`UNETLoader` / `CLIPLoader` / `VAELoader` / `LoraLoaderModelOnly` / `ModelSamplingAuraFlow`）
+**整段丢弃，用固定 id 段重建**，再接回模板原有的采样与保存节点，并把每格的
+prompt / seed / 尺寸 / 步数 / cfg 注入进去。
+
+```python
+# 加载链用固定 id 段重建，与模板自带的节点号隔离
+N_UNET, N_CLIP, N_VAE, N_AURA = "870", "880", "881", "890"
+```
+
+这样**换模型、增删 LoRA、改精度都只是改这张图，不用回 ComfyUI 重新导出工作流**；
+页面上那几个下拉框改的就是它。
+
+### 收图走 HTTP，不读本地目录
+
+图是用 `/view` 拉回来的，不去翻 ComfyUI 的 `output/` 目录。所以
+`--comfy-url` 指向局域网里另一台机器也能用——出图的机器不必是跑流水线的机器。
+
+### 引擎自管理：让「有没有开 ComfyUI」不再是使用者的问题
+
+见下一节。设计上有一条硬规矩：**只关自己拉起的实例**（内部用 `_COMFY_OWNED` 标记区分），
+使用者手动开的 ComfyUI 绝不动。
+
+### 零依赖
+
+只用标准库：`http.server` 当后端、`urllib` 调 ComfyUI、`subprocess` 管引擎。
+目标是「装了 Python 就能跑」，不让下载的人先配半天环境。
+
+### 踩过的坑（留给后来人）
+
+- **不能靠「端口通不通」判断 ComfyUI 是否就绪**。系统代理会对本机请求返回 502 的 HTML，
+  看起来像「连上了」。必须校验返回的 JSON 里有没有 `devices` 字段才算真就绪。
+- **Windows 的 `SO_REUSEADDR` 允许多个进程绑同一端口**。调试时「改了代码没生效」，
+  很可能是旧进程还占着端口、请求被随机分给了旧代码 —— 先
+  `netstat -ano | findstr :8790` 确认监听者是不是自己。
+- **无头拉起 ComfyUI 时，某些自定义节点会卡在交互确认上**。`stdin` 给了 `DEVNULL`，
+  等不到输入就直接退出（日志里只有一行 `[safe-delete]...CONFIRM_REQUIRED`）。
+  本例是 ComfyTV 的启动备份触发了批量删除确认，解法是用它自带的测试模式开关跳过
+  —— 见 [常见问题](#常见问题)。
+- **无头子进程别继承宿主的 `PYTHONPATH`**。IDE / 各种工具注入的路径会混进 ComfyUI 的
+  import 搜索路径，用单独的锚点目录顶掉（见 `engine_env/`）。
+- **`urllib` 默认走系统代理**。调本机 / LAN 服务时每次连接都被代理拖几秒，
+  用 `build_opener(ProxyHandler({}))` 禁掉。
 
 ## ComfyUI 引擎自管理
 
