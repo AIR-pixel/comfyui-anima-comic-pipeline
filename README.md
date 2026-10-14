@@ -108,4 +108,9 @@ ComfyUI 时没有它，ComfyTV 功能完整。详见 [`engine_env/README.md`](en
 ## 致谢
 
 任务书协议仿自 **Butako11 / AnimaComicStudio** 的 `ComfyUI-Anima-Story` 节点组。
-Anima 模型权重为非商业许可，使用请遵循各模型作者的条款。
+
+本仓库只包含代码，**不带任何模型权重**——Anima 模型请自行从模型作者处获取。
+
+## 许可
+
+[MIT](LICENSE)
