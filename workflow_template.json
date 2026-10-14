@@ -1,0 +1,233 @@
+{
+  "template": {
+    "348": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "miaomiaoHarem_anima16.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "454": {
+      "class_type": "LoraLoaderModelOnly",
+      "inputs": {
+        "model": [
+          "348",
+          0
+        ],
+        "lora_name": "cunny_animaV1.0-000009.safetensors",
+        "strength_model": 0.9
+      }
+    },
+    "401": {
+      "class_type": "LoraLoaderModelOnly",
+      "inputs": {
+        "model": [
+          "454",
+          0
+        ],
+        "lora_name": "anima-highres-aesthetic-boost.safetensors",
+        "strength_model": 0.5
+      }
+    },
+    "414": {
+      "class_type": "LoraLoaderModelOnly",
+      "inputs": {
+        "model": [
+          "401",
+          0
+        ],
+        "lora_name": "anima-preview-3-masterpieces-v5.safetensors",
+        "strength_model": 0.5
+      }
+    },
+    "356": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "414",
+          0
+        ],
+        "shift": 3,
+        "sampling": "flow"
+      }
+    },
+    "349": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_06b_base.safetensors",
+        "type": "stable_diffusion",
+        "device": "default"
+      }
+    },
+    "359": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "qwen_image_HDR_vae_fp32_comfy.safetensors"
+      }
+    },
+    "353": {
+      "class_type": "CR Prompt Text",
+      "inputs": {
+        "prompt": "pastel colors,Nai3 style,Furina (genshin impact),Nai3 style,pastel colors,Smile,standing,wallpaper,huge filesize,background light,(blurry:0.3),dusk,bust,solo,one hand on waist,pose,skirt,plaid,pleated skirt,sailor collar,school uniform,upper body,looking at viewer,huge filesize,rim light,Volumetric Lighting,Cinematic Lighting,(starry background:0.8),genshin impact,against backlight at dusk,looking_at_viewer,eyeball,eye-contact,kawaii,Wink,v,"
+      }
+    },
+    "368": {
+      "class_type": "CR Prompt Text",
+      "inputs": {
+        "prompt": ""
+      }
+    },
+    "385": {
+      "class_type": "CR Prompt Text",
+      "inputs": {
+        "prompt": "best quality, score_7, score_9,sensitive,very aesthetic, ultra detailed,fair skin,explicit,high contrast,photorealistic,raw photo,photo background,"
+      }
+    },
+    "387": {
+      "class_type": "JoinStringMulti",
+      "inputs": {
+        "inputcount": 3,
+        "string_1": [
+          "368",
+          0
+        ],
+        "string_2": [
+          "385",
+          0
+        ],
+        "string_3": [
+          "353",
+          0
+        ],
+        "delimiter": " ",
+        "return_list": false
+      }
+    },
+    "357": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "349",
+          0
+        ],
+        "text": [
+          "387",
+          0
+        ]
+      }
+    },
+    "358": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "349",
+          0
+        ],
+        "text": "lowres,bad,error,fewer,extra,missing,worst quality,jpeg artifacts,bad quality,watermark,signature,extra digits,artistic error,username,abstract,artist logo,artist name,signature,bad fingers,bad hand,patreon username,patreon logo,web address,simple background,(worst quality, low quality:1.4),(deformed, distorted, disfigured:1.3),poorly drawn hands,extra fingers,mutated,lowres,text,watermark,signature,messy drawing,doll,plastic \n\n"
+      }
+    },
+    "361": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {
+        "width": 920,
+        "height": 1536,
+        "batch_size": 1
+      }
+    },
+    "362": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "356",
+          0
+        ],
+        "positive": [
+          "357",
+          0
+        ],
+        "negative": [
+          "358",
+          0
+        ],
+        "latent_image": [
+          "361",
+          0
+        ],
+        "seed": 918016526553622,
+        "steps": 30,
+        "cfg": 5,
+        "sampler_name": "euler_ancestral",
+        "scheduler": "normal",
+        "denoise": 1
+      }
+    },
+    "364": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "362",
+          0
+        ],
+        "vae": [
+          "359",
+          0
+        ]
+      }
+    },
+    "439": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "364",
+          0
+        ],
+        "filename_prefix": "anima-t2i/ComfyUI"
+      }
+    }
+  },
+  "meta": {
+    "_source": "从你自己的 ComfyUI 文生图工作流导出（菜单 Workflow → Export (API)）后整理而成",
+    "_note": "放大链（Flux2-Klein/Klein高清放大/PainterFluxImageEdit/2048缩放/colorMatch）已按需求剔除；原工作流中该链本就处于 bypass 状态。",
+    "_defaults": {
+      "width": 920,
+      "height": 1536,
+      "steps": 30,
+      "cfg": 5,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 1,
+      "seed": 918016526553622,
+      "save_prefix": "anima-t2i/ComfyUI"
+    },
+    "_models": {
+      "unet": {
+        "name": "miaomiaoHarem_anima16.safetensors",
+        "weight_dtype": "default"
+      },
+      "clip": {
+        "name": "qwen_3_06b_base.safetensors",
+        "type": "stable_diffusion",
+        "device": "default"
+      },
+      "vae": {
+        "name": "qwen_image_HDR_vae_fp32_comfy.safetensors"
+      },
+      "loras": [
+        {
+          "name": "cunny_animaV1.0-000009.safetensors",
+          "strength": 0.9
+        },
+        {
+          "name": "anima-highres-aesthetic-boost.safetensors",
+          "strength": 0.5
+        },
+        {
+          "name": "anima-preview-3-masterpieces-v5.safetensors",
+          "strength": 0.5
+        }
+      ],
+      "shift": 3,
+      "sampling": "flow"
+    }
+  }
+}

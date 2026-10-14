@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>长篇漫画任务书生成器 · 仿 AnimaComicStudio 协议</title>
+<style>
+:root{
+  --bg:#0e111a; --panel:#1c2030; --panel2:#242a3d; --line:#333c56;
+  --text:#e8ecf5; --muted:#9aa6c0; --accent:#b99df5; --accent2:#7f77dd;
+  --ok:#5dcaa5; --warn:#ef9f27; --err:#e24b4a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,"Microsoft YaHei UI",sans-serif;font-size:15px;line-height:1.65}
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:10px}
+header h1{font-size:20px;font-weight:600}
+header h1 span{color:var(--accent)}
+header .sub{color:var(--muted);font-size:13px;margin-top:2px}
+header .actions{display:flex;gap:8px;align-items:center}
+nav{display:flex;gap:4px;padding:10px 28px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+nav button{background:none;border:none;color:var(--muted);font-size:15px;padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit}
+nav button.active{color:var(--accent);border-bottom-color:var(--accent)}
+nav button:hover{color:var(--text)}
+main{padding:22px 28px 60px;max-width:1180px}
+.tab{display:none}
+.tab.active{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:18px}
+.card h2{font-size:16px;font-weight:600;margin-bottom:4px}
+.card .hint{color:var(--muted);font-size:13px;margin-bottom:14px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:900px){.g2,.g3{grid-template-columns:1fr}}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+label b{color:var(--text);font-weight:500}
+input[type=text],input[type=number],textarea,select{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:var(--text);padding:9px 11px;font-size:14px;font-family:inherit;line-height:1.6}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent2)}
+textarea{resize:vertical;min-height:64px}
+.btn{background:var(--accent2);border:none;color:#fff;font-size:14px;padding:9px 18px;border-radius:9px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn:hover{filter:brightness(1.12)}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.btn.ghost:hover{color:var(--text);border-color:var(--accent2)}
+.btn.small{padding:5px 12px;font-size:13px}
+.btn.primary{background:var(--accent);color:#241d36;font-weight:600}
+.row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.row>*{flex:1;min-width:0}
+.row>.fit{flex:0 0 auto}
+.check{display:flex;align-items:center;gap:8px;color:var(--text);font-size:14px;cursor:pointer}
+.check input{accent-color:var(--accent2);width:16px;height:16px}
+details{border:1px solid var(--line);border-radius:11px;padding:0;margin-bottom:14px;background:var(--panel2)}
+details summary{cursor:pointer;padding:12px 16px;font-size:14px;font-weight:500;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸ ";color:var(--accent)}
+details[open] summary::before{content:"▾ "}
+details .body{padding:4px 16px 16px}
+.callout{background:#28213c;border-left:3px solid var(--accent);border-radius:8px;padding:12px 16px;font-size:13.5px;color:#d8cdf5;margin-bottom:14px}
+.lora-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.lora-row input{flex:1}
+.lora-row .fit{flex:0 0 auto}
+.tag{display:inline-block;background:#2b2448;color:#d4c3ff;font-size:12px;padding:2px 10px;border-radius:20px;margin-left:8px;vertical-align:middle}
+.status{font-size:13px;color:var(--ok)}
+.status.warn{color:var(--warn)}
+.status.err{color:var(--err)}
+pre.preview{background:#12151f;border:1px solid var(--line);border-radius:10px;padding:16px;font-size:12.5px;line-height:1.6;max-height:560px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Consolas,monospace;color:#cfd6e6}
+.turn-row{display:flex;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px;background:var(--panel2);font-size:13.5px}
+.turn-row .t{flex:1;color:var(--muted)}
+.turn-row .t b{color:var(--text);font-weight:500}
+table.seeds{width:100%;border-collapse:collapse;font-size:12.5px}
+table.seeds td,table.seeds th{border:1px solid var(--line);padding:6px 9px;text-align:left}
+table.seeds th{background:var(--panel2);color:var(--muted);font-weight:500}
+.help h3{font-size:15px;font-weight:600;margin:18px 0 8px;color:var(--accent)}
+.help h3:first-child{margin-top:0}
+.help p,.help li{font-size:14px;color:#cfd6e6;margin-bottom:6px}
+.help ul,.help ol{padding-left:22px;margin-bottom:10px}
+.help code{background:#12151f;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13px;color:#d4c3ff;font-family:ui-monospace,Consolas,monospace}
+footer{padding:18px 28px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>长篇漫画任务书生成器 <span>· 仿 AnimaComicStudio 协议</span></h1>
+    <div class="sub">填写故事与人物 → 生成任务书文件 → 交给任意 AI → 逐章获得每张图的英文提示词</div>
+  </div>
+  <div class="actions">
+    <span id="saveStatus" class="status">草稿自动保存到本机浏览器</span>
+    <button class="btn ghost small" id="btnFillExample">填入示例</button>
+    <button class="btn ghost small" id="btnReset">恢复默认</button>
+  </div>
+</header>
+
+<nav>
+  <button class="active" data-tab="create">创作工作台</button>
+  <button data-tab="lora">LoRA 与质量词</button>
+  <button data-tab="output">任务书与对话脚本</button>
+  <button data-tab="help">使用说明</button>
+</nav>
+
+<main>
+  <!-- ============ TAB 1 创作工作台 ============ -->
+  <section class="tab active" id="tab-create">
+    <div class="card">
+      <h2>项目与故事</h2>
+      <div class="hint">项目名只用于任务书标题，建议用英文字母、数字、下划线或短横线。</div>
+      <div class="grid g2">
+        <div>
+          <label><b>项目名称</b></label>
+          <input type="text" id="project_name" placeholder="comic_001">
+        </div>
+        <div>
+          <label><b>故事主线</b>（必填）</label>
+          <input type="text" id="story" placeholder="一句话或一段梗概">
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <label><b>AI 工作设定</b> · 决定 LLM 怎样创作，可直接修改<span class="tag">优先于内置规则</span></label>
+        <textarea id="work_instructions" rows="8"></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>人物设定 · 固定身份</h2>
+      <div class="hint">姓名、发色、瞳色等身份特征分开写，便于 LLM 区分角色。留空的字段由故事自行决定。</div>
+      <div class="grid g2">
+        <div><label><b>女主 / 主要人物</b></label><textarea id="characters" rows="3" placeholder="姓名、发色、瞳色和基础身份特征。"></textarea></div>
+        <div><label><b>男主</b></label><textarea id="male_lead" rows="3" placeholder="男主自己的特征，避免与女主混写。"></textarea></div>
+        <div><label><b>女二号</b></label><textarea id="female_second" rows="2" placeholder="姓名、发色、瞳色等。"></textarea></div>
+        <div><label><b>男二号</b></label><textarea id="male_second" rows="2" placeholder="姓名、发色、瞳色等。"></textarea></div>
+      </div>
+      <div style="margin-top:14px">
+        <label><b>其他角色</b> · 每行一个：角色ID = 固定身份描述</label>
+        <textarea id="additional_cast" rows="3" placeholder="kaito = 黑发棕眼的成年男性，戴细框眼镜&#10;nana = 酒红色短发少女"></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>参考资料 · 按需展开填写</h2>
+      <div class="hint">提供灵感，LLM 会按剧情改编组合，不会整段照搬。均可留空。</div>
+      <div class="row" style="margin-bottom:14px">
+        <div class="fit" style="flex:0 0 150px">
+          <label>导入到</label>
+          <select id="refTarget">
+            <option value="actions">动作</option>
+            <option value="clothing">服装</option>
+            <option value="locations">场景</option>
+            <option value="art_style">画风</option>
+            <option value="camera">镜头</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        <div>
+          <label>导入 UTF-8 文本文件</label>
+          <input type="file" id="refFile" accept=".txt,.md,text/plain">
+        </div>
+      </div>
+      <div class="grid g2">
+        <div><label><b>动作参考</b> · 每行一个动作</label><textarea id="actions" rows="4" placeholder="递出素描本&#10;抬头看向窗外"></textarea></div>
+        <div><label><b>服装参考</b></label><textarea id="clothing" rows="4"></textarea></div>
+        <div><label><b>场景参考</b></label><textarea id="locations" rows="4"></textarea></div>
+        <div><label><b>画风参考</b></label><textarea id="art_style" rows="4"></textarea></div>
+        <div><label><b>镜头参考</b></label><textarea id="camera" rows="4"></textarea></div>
+        <div><label><b>其他要求</b></label><textarea id="other" rows="4"></textarea></div>
+      </div>
+    </div>
+
+    <details class="card" open>
+      <summary>生成参数 · 画布 / 采样 / 数量</summary>
+      <div class="body">
+        <div class="grid g3">
+          <div><label>宽度 Width（8 的倍数）</label><input type="number" id="width" min="256" max="4096" step="8"></div>
+          <div><label>高度 Height（8 的倍数）</label><input type="number" id="height" min="256" max="4096" step="8"></div>
+          <div><label>Seed 基数 · -1 表示随机</label><input type="text" id="base_seed" inputmode="numeric"></div>
+        </div>
+        <div class="grid g3" style="margin-top:14px">
+          <div><label>采样步数 Steps</label><input type="number" id="steps" min="1" max="200"></div>
+          <div><label>提示词引导 CFG</label><input type="number" id="cfg" min="0" max="30" step="0.1"></div>
+          <div><label>降噪强度 Denoise</label><input type="number" id="denoise" min="0" max="1" step="0.01"></div>
+        </div>
+        <div class="grid g2" style="margin-top:14px">
+          <div><label>采样器 Sampler</label><select id="sampler_name"></select></div>
+          <div><label>调度器 Scheduler</label><select id="scheduler"></select></div>
+        </div>
+        <div class="grid g3" style="margin-top:14px">
+          <div><label>每章张数（5–20）</label><input type="number" id="chapter_size" min="5" max="20"></div>
+          <div><label>章节数（1–100）</label><input type="number" id="chapter_count" min="1" max="100"></div>
+          <div><label>总张数（最多 500）</label><input type="text" id="totalDisplay" readonly style="color:var(--accent);font-weight:600"></div>
+        </div>
+        <label class="check" style="margin-top:14px">
+          <input type="checkbox" id="caption_enabled">
+          <span>每格生成中文画面说明（caption）· 关闭则只输出英文提示词</span>
+        </label>
+        <div class="callout" style="margin-top:14px;margin-bottom:0">
+          默认值对应 Anima-Turbo（8–12 步、CFG 1）。若使用 Anima-Base / Aesthetic，建议 Steps 30–50、CFG 4–5；换成其他模型时按该模型的推荐值设置。
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ TAB 2 LoRA ============ -->
+  <section class="tab" id="tab-lora">
+    <div class="card">
+      <h2>LoRA 触发词管理</h2>
+      <div class="hint">逐行添加 LoRA 及其触发词；点「由 LoRA 生成质量词」会自动拼接进 quality_prefix。生图时如需单独设置强度，请在各 LoRA 行补一句备注。</div>
+      <div id="loraList"></div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn ghost small" id="btnAddLora">+ 添加 LoRA</button>
+        <button class="btn small" id="btnBuildPrefix">由 LoRA 生成质量词</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>quality_prefix · 每张图固定追加</h2>
+      <div class="hint">会原样拼在每格提示词最前面（含 LoRA 触发词与固定风格词）。建议使用英文；自行填写的中文也会原样保留。</div>
+      <textarea id="quality_prefix" rows="3"></textarea>
+    </div>
+    <div class="card">
+      <h2>负面提示词 Negative prompt</h2>
+      <div class="hint">在生图平台单独填写，不会进入每格提示词。</div>
+      <textarea id="negative_prompt" rows="3"></textarea>
+    </div>
+  </section>
+
+  <!-- ============ TAB 3 输出 ============ -->
+  <section class="tab" id="tab-output">
+    <div class="card">
+      <h2>生成任务书</h2>
+      <div class="hint">任务书包含：LLM 角色与规则、分镜景别规则、输出协议（大纲 + 每章 JSON）、提示词组装规则、你的全部输入、多轮对话流程与种子表。</div>
+      <div class="row">
+        <button class="btn primary" id="btnGenerate">生成任务书</button>
+        <button class="btn ghost" id="btnDownload">下载 .md 文件</button>
+        <button class="btn ghost" id="btnCopyBook">复制任务书全文</button>
+        <span id="genStatus" class="status"></span>
+      </div>
+      <pre class="preview" id="preview" style="margin-top:14px">点击「生成任务书」预览内容。</pre>
+    </div>
+
+    <div class="card">
+      <h2>多轮对话脚本</h2>
+      <div class="hint">把任务书发给任意 AI 后，按顺序复制下列指令，每轮只生成一章。</div>
+      <div id="turnList"></div>
+    </div>
+
+    <div class="card">
+      <h2>种子表</h2>
+      <div class="hint">第 N 张使用「Seed 基数 + N − 1」。基数设为 -1 时每张随机，忽略本表。</div>
+      <div id="seedBox"></div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 4 帮助 ============ -->
+  <section class="tab help" id="tab-help">
+    <div class="card">
+      <h2>这个工具是什么</h2>
+      <p>它复刻 <b>AnimaComicStudio</b>（Butako11）的长故事提示词设计，但把「内置 ComfyUI 引擎」换成「任务书文件 + 任意 AI」：</p>
+      <ul>
+        <li>原项目：网页填表 → 后端把规则和输入打包成请求 → 内置 ComfyUI 节点调用 DeepSeek 生成 JSON → 同一节点直接采样出图。</li>
+        <li>本工具：网页填表 → 生成一份自包含的 Markdown 任务书 → 你把它发给任意 AI（在线服务或本地模型皆可）→ AI 按多轮流程逐章输出 JSON → 每格的 <code>prompt</code> 字段喂回本仓库的流水线出图。</li>
+      </ul>
+      <p>协议（角色一致性、服装状态继承、分镜表先行、分层校验思路、提示词组装顺序）与原项目 <code>ComfyUI-Anima-Story</code> 节点组一致，并按「纯对话、无代码兜底」做了适配：最终英文提示词由 AI 直接给出，连续性靠每轮的 previous_state 复述维持。</p>
+    </div>
+
+    <div class="card">
+      <h2>使用步骤</h2>
+      <ol>
+        <li>在「创作工作台」填好故事、人物、生图参数，切到「任务书与对话脚本」点<b>生成任务书</b>，下载 <code>.md</code>。</li>
+        <li>把任务书整份发给任意 AI（网页版 ChatGPT / Claude / 本地 Ollama 等都行）。建议上下文长度 ≥ 32768、Temperature 0.3；支持 JSON mode 的模型可开启。</li>
+        <li>第一轮先要<b>故事大纲</b>，确认满意后再按「多轮对话脚本」逐章要 JSON。</li>
+        <li>把每章的 JSON 存成本地 <code>.md</code>（格式见仓库里的 <code>示例_第1章.md</code>），到流水线标签页 ② 上传出图。</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>使用建议</h2>
+      <ul>
+        <li>能力有限的小模型：每章设 5–10 张，故事以单人或双人互动为主，避免一格多人复杂互动。</li>
+        <li>输出被截断：回复「继续」让模型接着输出；不要重新发送整章指令。</li>
+        <li>某章 JSON 缺字段或帧号错误：把具体错误发回，例如「第 3 章缺少 panels/11/participants，请只重新输出第 3 章完整 JSON」。</li>
+        <li>人物串色/外观漂移：在「AI 工作设定」里加一句「每格开头先复述每个出场人物当前的外观状态」；根本约束仍是第 7.3 节固定身份。</li>
+        <li>先小规模验证：第 1 章出图满意，再继续后续章节，避免全文返工。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>与原项目设计的对应关系</h2>
+      <ul>
+        <li>AI 工作设定 / 故事 / 人物 / 参考资料 / 生图参数 ← 原项目创作工作台全部输入项</li>
+        <li>LoRA 触发词与 quality_prefix ← 原项目「模型与 LoRA」页的触发词管理（此处不管理工作流模型文件，只管触发词）</li>
+        <li>七阶段流水线（大纲 → 角色绑定 → 分镜表 → 章节核对 → 详细展开 → 中译英 → 逐张渲染）→ 压缩为任务书第 5 节的两轮协议：先大纲，再每章「分镜表 + 自检 + 详细 panels」</li>
+        <li>中译英阶段 → 由「绘图字段必须英文」的硬规则代替，让 AI 直接写英文</li>
+        <li>程序化提示词组装 → 任务书第 6 节组装规则，LLM 直接产出最终 prompt</li>
+        <li>manifest / 帧指纹续跑 → 第 9 节连续性规则：previous_state 复述 + 已完成章节不改写</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer>
+  协议仿自 Butako11/AnimaComicStudio 的 ComfyUI-Anima-Story 节点组（v1.2.13）。Anima 模型权重为非商业许可，使用请遵循各模型作者条款。本工具完全本地运行，不联网、不上传任何输入。
+</footer>
+
+<script>
+// ==PURE-BEGIN==
+var F = '\u0060\u0060\u0060';
+
+var SAMPLERS = ['euler','euler_ancestral','dpmpp_2m','dpmpp_2m_sde','dpmpp_sde','heun','uni_pc','er_sde','dpmpp_3m_sde','ddim'];
+var SCHEDULERS = ['normal','karras','simple','sgm_uniform','exponential','beta'];
+
+var DEFAULT_WORK_INSTRUCTIONS =
+'创作一部连贯的长篇漫画。重要事件要有开始、过程和结束，相邻画面之间有明确因果关系，不要变成互不相关的插画。\n' +
+'每张只描写一个能画出的瞬间；人物的动作、持物、服装状态和位置应互相一致，不要在一张画面里写多个先后动作。\n' +
+'人物基础外貌（姓名、发色、瞳色）保持一致；妆容、肤色、服装、体型只随剧情有依据地改变。\n' +
+'镜头根据情节变化，兼顾环境、人物互动和表情特写；同一场景内服装连续。\n' +
+'重要事件要有开始、过程和结果；画外人物可以出现在说明文字里，但不强行画进画面。';
+
+var DEFAULTS = {
+  project_name: 'comic_001',
+  work_instructions: DEFAULT_WORK_INSTRUCTIONS,
+  story: '',
+  characters: '',
+  male_lead: '',
+  female_second: '',
+  male_second: '',
+  additional_cast: '',
+  actions: '',
+  clothing: '',
+  locations: '',
+  art_style: '',
+  camera: '',
+  other: '',
+  loras: [],
+  quality_prefix: 'masterpiece, best quality, score_7, safe,',
+  negative_prompt: 'worst quality, low quality, score_1, score_2, score_3, artist name, blurry, jpeg artifacts, chromatic aberration',
+  width: 1024,
+  height: 1536,
+  steps: 8,
+  cfg: 1.0,
+  sampler_name: 'euler_ancestral',
+  scheduler: 'simple',
+  denoise: 1.0,
+  base_seed: '-1',
+  chapter_size: 10,
+  chapter_count: 10,
+  caption_enabled: true
+};
+
+var EXAMPLE_STATE = {
+  project_name: 'comic_001',
+  work_instructions: DEFAULT_WORK_INSTRUCTIONS,
+  story: '一个女孩通过不断练习画画，克服挫折，最终举办第一次个人画展的成长故事。',
+  characters: '林小满，黑色长发，深棕色眼睛，性格内向但执着。',
+  male_lead: '陈屿，黑色短发，浅灰色眼睛，温和直率的少年。',
+  female_second: '苏晴，栗色马尾，琥珀色眼睛，开朗热心的美术社社长。',
+  male_second: '',
+  additional_cast: 'kaito = 美术社顾问老师，灰白短发，藏蓝色眼睛',
+  actions: '在素描本上勾线\n抬头看向窗外的晚霞\n把画举到胸前展示\n弯腰捡起掉在地上的橡皮',
+  clothing: '米色针织开衫与白色衬衫\n浅灰色棉麻长裙\n棕色帆布围裙',
+  locations: '傍晚的美术教室，画架与石膏像\n学校中庭的樱花树\n社区活动中心的小展厅',
+  art_style: '干净线稿的日系动画风格，明亮柔和的色调',
+  camera: '过肩双人镜头\n正面中景\n低机位仰视',
+  other: '画面温暖明亮，强调手部与纸张的质感',
+  loras: [
+    { name: 'Anima Detail Tweaker', trigger: 'detailed lineart, refined texture', note: '强度 0.8' },
+    { name: 'TURBO for ANIMA', trigger: '', note: '配合 8 步 CFG 1' }
+  ],
+  quality_prefix: 'masterpiece, best quality, score_7, safe, detailed lineart, refined texture',
+  negative_prompt: 'worst quality, low quality, score_1, score_2, score_3, artist name, blurry, jpeg artifacts, bad anatomy, missing fingers, watermark',
+  width: 1024,
+  height: 1536,
+  steps: 8,
+  cfg: 1.0,
+  sampler_name: 'euler_ancestral',
+  scheduler: 'simple',
+  denoise: 1.0,
+  base_seed: '1072121865390205',
+  chapter_size: 10,
+  chapter_count: 10,
+  caption_enabled: true
+};
+
+var OUTLINE_SCHEMA =
+'{\n' +
+'  "title": "中文故事标题",\n' +
+'  "identity": {\n' +
+'    "character": "英文主角名（不要标签、不要年龄）",\n' +
+'    "hair": "固定发色（英文，未知留空字符串）",\n' +
+'    "eyes": "固定瞳色（英文，未知留空字符串）"\n' +
+'  },\n' +
+'  "initial_state": {\n' +
+'    "appearance": {\n' +
+'      "age": "完整英文句，如 The character is sixteen years old.",\n' +
+'      "makeup": "完整英文句或空字符串",\n' +
+'      "skin": "完整英文句或空字符串",\n' +
+'      "clothing": "35-70 词完整英文句：款式、颜色、材质、领口或袖口、下装、鞋、配饰",\n' +
+'      "body": "完整英文句或空字符串"\n' +
+'    },\n' +
+'    "location": "初始地点",\n' +
+'    "time": "初始时间段",\n' +
+'    "props": "重要道具及其归属"\n' +
+'  },\n' +
+'  "outline": [\n' +
+'    { "chapter": 1, "summary": "本章具体因果事件，含结尾" }\n' +
+'  ]\n' +
+'}';
+
+var CHAPTER_SCHEMA =
+'{\n' +
+'  "chapter": 2,\n' +
+'  "shots": [\n' +
+'    { "id": 11, "featured_ids": ["main"], "framing": "waist_up", "beat": "一句话事件" }\n' +
+'  ],\n' +
+'  "self_check": "对照本章大纲的自检：覆盖了哪些关键事件，结尾是什么",\n' +
+'  "panels": [\n' +
+'    {\n' +
+'      "id": 11,\n' +
+'      "caption": "中文画面说明，一句话",\n' +
+'      "seed": 1072121865390211,\n' +
+'      "location": "当前地点",\n' +
+'      "time": "当前时间",\n' +
+'      "props": "道具当前位置与状态",\n' +
+'      "appearance_changes": {},\n' +
+'      "change_reason": "外观变化的剧情理由，无则空字符串",\n' +
+'      "participants": [\n' +
+'        {\n' +
+'          "id": "main",\n' +
+'          "appearance": "该人物当前完整外观英文长句（继承上格并应用变化）",\n' +
+'          "position": "位置与朝向英文句",\n' +
+'          "action": "可见动作英文句",\n' +
+'          "expression": "表情英文句",\n' +
+'          "gaze": "视线方向与目标英文句",\n' +
+'          "visibility": "full 或 partial",\n' +
+'          "visible_appearance": "visibility 为 partial 时必填：只写实际可见部位与衣物，否则空字符串"\n' +
+'        }\n' +
+'      ],\n' +
+'      "interaction": "双方如何配合与回应，无互动则空字符串",\n' +
+'      "setting": "环境英文段：地点、前中后景、物件、材质、空间关系",\n' +
+'      "composition": "环境构图英文段：物件分布、留白、匿名背景路人，不写主要人物",\n' +
+'      "camera": "机位英文句：角度、高度、透视，不写视角标签",\n' +
+'      "lighting": "光影英文段：光源、方向、软硬、色温、阴影",\n' +
+'      "prompt": "最终英文提示词：quality_prefix 原样置于开头，按任务书第 6 节顺序组装"\n' +
+'    }\n' +
+'  ],\n' +
+'  "running_summary": "截至本章的累积中文摘要，2000 字符以内"\n' +
+'}';
+
+function fill(v, fallback) {
+  var s = (v === undefined || v === null) ? '' : String(v).trim();
+  return s ? s : (fallback || '（未提供）');
+}
+
+function seedLines(s) {
+  var total = s.chapter_size * s.chapter_count;
+  if (String(s.base_seed).trim() === '-1') {
+    return '（Seed 基数为 -1：每张图在生图平台自行随机或留空，忽略下表。）';
+  }
+  var base;
+  try { base = BigInt(String(s.base_seed).trim()); } catch (e) { return '（Seed 基数无效）'; }
+  if (base < 0n) return '（Seed 基数无效）';
+  var B = 1n << 64n;
+  var lines = [];
+  for (var ch = 1; ch <= s.chapter_count; ch++) {
+    var first = (ch - 1) * s.chapter_size + 1;
+    var last = Math.min(ch * s.chapter_size, total);
+    if (first > total) break;
+    var seeds = [];
+    for (var i = first; i <= last; i++) seeds.push(((base + BigInt(i - 1)) % B).toString());
+    lines.push('- 第 ' + first + '–' + last + ' 张（第 ' + ch + ' 章）：' + seeds.join(', '));
+  }
+  return lines.join('\n');
+}
+
+function turnScript(s) {
+  var out = ['第 1 轮 · 发送任务书后：请先输出故事大纲 JSON。'];
+  for (var i = 1; i <= s.chapter_count; i++) {
+    out.push('第 ' + (i + 1) + ' 轮 · 请生成第 ' + i + ' 章。请基于上文大纲与上一章最后状态继续，只输出第 ' + i + ' 章 JSON。');
+  }
+  out.push('结束 · 全部章节已完成。');
+  return out;
+}
+
+function buildTaskBook(s) {
+  var total = s.chapter_size * s.chapter_count;
+  var L = [];
+  L.push('# 长篇漫画生成任务书 · ' + fill(s.project_name, 'comic_001'));
+  L.push('');
+  L.push('> 用法：把本文件整体发送给任意 AI（在线服务或本地部署的大语言模型都行），');
+  L.push('> 然后按第 8 节的多轮流程逐轮发送指令。每一章会返回一份 JSON，其中每格都带有可直接');
+  L.push('> 复制到生图平台的英文提示词（prompt 字段）。');
+  L.push('');
+  L.push('---');
+  L.push('');
+  L.push('## 1. 你的角色');
+  L.push('');
+  L.push('你是一位长篇漫画导演，同时是英文绘图提示词工程师。用户会给你一个故事和一份创作要求，');
+  L.push('你需要先规划故事大纲，再分章节生成画面，并为每一格写出完整的英文绘图提示词。');
+  L.push('');
+  L.push('硬性原则：');
+  L.push('- 所有绘图描述（setting / composition / camera / lighting / participants / interaction / prompt）必须是英文。');
+  L.push('- 中文只允许出现在 caption（画面说明）和 running_summary（累积摘要）中。');
+  L.push('- 每轮输出必须是合法 JSON，不要输出解释性文字、不要使用 Markdown 代码块包裹。');
+  L.push('');
+  L.push('## 2. 创作总规则');
+  L.push('');
+  L.push('1. 先规划整体故事，再分章节生成画面。重要事件要有开始、过程和结束；相邻画面之间有明确的因果关系，不能变成互不相关的插画。');
+  L.push('2. 每格只描写一个可画出的瞬间。同一格里不写多个先后发生的动作。');
+  L.push('3. 人物身份（姓名、发色、瞳色）全程固定，不得改变。妆容、肤色、服装、体型只能随剧情变化，且必须有剧情理由。');
+  L.push('4. 第 7.4 节的参考资料只借鉴合适的内容，允许按剧情改编、组合，不要整段照搬标签。');
+  L.push('5. 每格都要详细交代环境、构图、机位、光影和每个可见人物的当前状态，禁止写“和上格一样”。');
+  L.push('6. 服装必须写清款式、颜色、材质、领口或袖口、下装、鞋和配饰。服装变化后的状态会一直延续到后续所有格，不会自动恢复成初始服装。');
+  L.push('7. 同一格内的所有描述必须相容：例如一本书只能是打开或合上中的一种。道具只记录当前事实，不提前出现尚未完成的作品。');
+  L.push('8. 每格最终提示词以约 150–300 个英文词为目标：具体、有用，不堆砌空泛形容词，不凑字数。');
+  L.push('9. 用户在第 7.1 节“AI 工作设定”中的要求，优先于以上内置建议。');
+  L.push('');
+  L.push('## 3. 分镜与景别规则');
+  L.push('');
+  L.push('1. 每一章先输出分镜表（shots），再写详细画面（panels）。分镜表决定结构；详细画面按分镜表展开，不允许私自增减重点人物。');
+  L.push('2. 分镜表每格包含：全局帧号 id、1–2 个重点人物 featured_ids、一个事件 beat、一个景别 framing。');
+  L.push('3. 景别只能四选一：face_close_up（脸部特写）/ upper_body（胸部以上）/ waist_up（腰部以上）/ full_body（全身）。');
+  L.push('4. 非 full_body 景别：该人物必须设 visibility=partial，并给出 visible_appearance，只描述实际可见的部位与衣物（特写写脸、头发、眼镜和领口；胸上写可见上身衣物；腰上写上身与可见腰部细节）。不得为了补全设定而画出画外的脸、头发或鞋子；完整服装状态仍保留在 appearance 字段中供后续续接。');
+  L.push('5. 机位是四个独立维度，可以跨维度组合：景别 × 朝向（正面 / 侧面 / 斜侧 / 背面 / 过肩）× 高度（平视 / 俯视 / 仰视 / 低机位）× 透视（广角环境透视 / 近大远小 / 自然 / 长焦压缩）。每章至少使用五种有意义的组合；不要机械轮换，也不要连续三格使用相同的景别、朝向和高度。');
+  L.push('6. 第一人称画面：视点的拥有者不列入 featured_ids，也不被画成一个全身人物；没有身体部位入镜时根本不列为参与者。');
+  L.push('7. camera 字段只写机位本身（角度、高度、透视），不要写 third-person view、POV 等视角标签。');
+  L.push('8. 三人及以上的剧情要拆分镜头：先 A/B 互动一格，再 C 观察或反应一格（A/B 画外）。不允许在一格里塞进三个重点人物，也不把重要角色冒充背景路人。');
+  L.push('9. 新场景先交代环境；互动用双人或过肩；关键反应用近景；空间移动用侧面、背面或广角。');
+  L.push('');
+  L.push('## 4. 字段分工');
+  L.push('');
+  L.push('- setting：环境。地点、前景、中景、背景、可见物件、材质、空间布局与纵深。');
+  L.push('- composition：只写环境物件分布、空间留白和简略的匿名背景路人；不写主要人物的站位、朝向或动作。');
+  L.push('- camera：机位（景别由分镜表另行提供，此处只写角度与高度）。');
+  L.push('- lighting：光源、方向、软硬、色温与阴影。');
+  L.push('- participants：每个可见人物一段，顺序为 身份/当前外观 → 位置与朝向 → 动作 → 表情 → 视线。');
+  L.push('- interaction：双方如何配合或回应，写清谁主动、谁回应。');
+  L.push('- 环境物件的归属用物件本身描述，不要用画外人物的名字命名（写 a wooden front porch，不写 Bob\'s porch）。');
+  L.push('');
+  L.push('## 5. 输出协议');
+  L.push('');
+  L.push('### 5.1 第一轮：故事大纲');
+  L.push('');
+  L.push('只返回如下 JSON（不要多余文字）：');
+  L.push('');
+  L.push(F + 'json');
+  L.push(OUTLINE_SCHEMA);
+  L.push(F);
+  L.push('');
+  L.push('要求：');
+  L.push('- outline 恰好 ' + s.chapter_count + ' 条，编号 1 到 ' + s.chapter_count + '，覆盖完整故事和结局，总张数为 ' + total + '。');
+  L.push('- identity 只放固定身份（角色名、发色、瞳色）；可变属性全部放 initial_state.appearance。');
+  L.push('- clothing 为 35–70 词的完整英文句子，必须包含款式、颜色、材质、领口或袖口、下装、鞋、配饰。');
+  L.push('- appearance 的每个字段都是完整英文句子，不是名词短语。');
+  L.push('- 第 7.3 节给出的固定人设优先；未指定的发色或瞳色留空字符串，不要编造。');
+  L.push('- initial_state.props 只记录初始物理状态，不列未来才会完成的作品。');
+  L.push('');
+  L.push('### 5.2 第 2 轮起：每一轮生成一章');
+  L.push('');
+  L.push('用户每次发送“请生成第 N 章”。每轮只生成一章，返回如下 JSON：');
+  L.push('');
+  L.push(F + 'json');
+  L.push(CHAPTER_SCHEMA);
+  L.push(F);
+  L.push('');
+  L.push('要求：');
+  L.push('- shots 与 panels 的数量必须都等于每章张数（' + s.chapter_size + '），id 从本章第一帧开始连续递增，恰好到本章最后一帧。');
+  L.push('- shots 与 panels 的 id 都是全局帧号（本章 first_frame 到 last_frame），不是章内 1..N。本章帧号范围见第 7.8 节种子表。');
+  L.push('- panels 的参与者必须与对应分镜的 featured_ids 一致；其他重要人物留在画外（caption 中可以交代）。');
+  L.push('- appearance_changes 只包含 age / makeup / skin / clothing / body 中发生变化的字段，且必须是完整替换句；空对象表示继承上一格状态。');
+  L.push('- 服装变化不需要 change_reason；其他外观变化必须给出剧情理由。');
+  L.push('- 上一章最后一格的状态（appearance / location / time / props）就是本章的 previous_state，未变化的字段原样继承。');
+  L.push('- running_summary 每章累积更新，2000 字符以内，保留关键事件与人物当前状态。');
+  L.push('- 每格的 prompt 字段就是最终提示词，按第 6 节规则组装。');
+  L.push('');
+  L.push('## 6. 最终提示词组装规则（prompt 字段）');
+  L.push('');
+  L.push('prompt 按以下顺序用完整英文句拼接：');
+  L.push('1. quality_prefix 原样放在最前面（第 7.5 节，包含 LoRA 触发词）；');
+  L.push('2. setting → composition → camera → lighting；');
+  L.push('3. 每个可见人物：身份句（如 The main character is ...）→ appearance → position → action → expression → gaze；');
+  L.push('4. interaction（有互动时）；');
+  L.push('5. 景别不是 full_body 时，在段前加入对应景别句（如 Upper-body shot, framed from head to chest.）。');
+  L.push('');
+  L.push('要求：全英文；不写负面词（负面提示词单独在第 7.6 节）；同一信息不重复多遍；场景在前、人物在后。');
+  L.push('');
+  L.push('## 7. 用户输入');
+  L.push('');
+  L.push('### 7.1 AI 工作设定（优先于内置规则）');
+  L.push('');
+  L.push(fill(s.work_instructions));
+  L.push('');
+  L.push('### 7.2 故事主线');
+  L.push('');
+  L.push(fill(s.story));
+  L.push('');
+  L.push('### 7.3 人物设定（固定身份）');
+  L.push('');
+  L.push('- 女主 / 主要人物：' + fill(s.characters, '（未指定，由故事决定）'));
+  L.push('- 男主：' + fill(s.male_lead, '（未指定）'));
+  L.push('- 女二号：' + fill(s.female_second, '（未指定）'));
+  L.push('- 男二号：' + fill(s.male_second, '（未指定）'));
+  L.push('- 其他角色（每行一个，角色ID = 固定身份描述）：');
+  L.push(fill(s.additional_cast, '（无）'));
+  L.push('');
+  L.push('以上姓名为固定身份的一部分；已指定的发色、瞳色全程不可更改。主要人物在 participants 中的 id 统一用 main，其他角色使用其角色ID。其他角色的描述可用中文，最终写入提示词时由你译为英文，但角色ID 必须原样保留。');
+  L.push('');
+  L.push('### 7.4 参考资料（按需借鉴，可改编）');
+  L.push('');
+  L.push('- 动作（每行一个）：');
+  L.push(fill(s.actions, '（无）'));
+  L.push('- 服装：');
+  L.push(fill(s.clothing, '（无）'));
+  L.push('- 场景：');
+  L.push(fill(s.locations, '（无）'));
+  L.push('- 画风：');
+  L.push(fill(s.art_style, '（无）'));
+  L.push('- 镜头：');
+  L.push(fill(s.camera, '（无）'));
+  L.push('- 其他：');
+  L.push(fill(s.other, '（无）'));
+  L.push('');
+  L.push('### 7.5 LoRA 触发词 / quality_prefix');
+  L.push('');
+  L.push('每张图固定追加在最前面：');
+  L.push('');
+  L.push(fill(s.quality_prefix, '（无）'));
+  L.push('');
+  if (s.loras && s.loras.length) {
+    L.push('用户启用的 LoRA（触发词已合并进上方 quality_prefix，供你参考）：');
+    s.loras.forEach(function (l) {
+      L.push('- ' + (l.name || '未命名') + (l.trigger ? '：' + l.trigger : '') + (l.note ? '（' + l.note + '）' : ''));
+    });
+    L.push('');
+  }
+  L.push('### 7.6 负面提示词（生图平台单独填写，不进 prompt）');
+  L.push('');
+  L.push(fill(s.negative_prompt, '（无）'));
+  L.push('');
+  L.push('### 7.7 生图参数（用户在生图平台自行设置，供你参考）');
+  L.push('');
+  L.push('- 分辨率：' + s.width + ' × ' + s.height);
+  L.push('- Steps：' + s.steps + '；CFG：' + s.cfg);
+  L.push('- 采样器：' + s.sampler_name + '；调度器：' + s.scheduler);
+  L.push('- 降噪强度：' + s.denoise);
+  L.push('');
+  L.push('### 7.8 章节配置与种子表');
+  L.push('');
+  L.push('- 每章张数：' + s.chapter_size + '；章节数：' + s.chapter_count + '；总张数：' + total);
+  L.push('- 每格中文画面说明（caption）：' + (s.caption_enabled ? '开启' : '关闭'));
+  L.push('- 种子规则：第 N 张使用种子 = Seed 基数 + N − 1。每格 JSON 中的 seed 字段必须按下表填写。');
+  L.push('');
+  L.push(seedLines(s));
+  L.push('');
+  L.push('## 8. 多轮对话流程');
+  L.push('');
+  L.push('1. 第 1 轮：用户发送本文件，然后发送“请先输出故事大纲 JSON”。收到大纲后，用户确认或提出修改。');
+  L.push('2. 第 2 轮起：依次发送“请生成第 1 章”“请生成第 2 章”……每轮只生成一章。');
+  L.push('3. 每一章返回后，把该章 JSON 保存到本地；其中每格的 prompt 字段即可复制到生图平台出图，seed 字段为对应种子。');
+  L.push('4. 全部章节完成后，用户发送“全部章节已完成”，你输出一段简短的完成确认。');
+  L.push('');
+  L.push('每轮发送章节指令时，请使用下面的模板（N 替换为章号）：');
+  L.push('');
+  L.push('> 请生成第 N 章。请基于上文大纲与上一章最后状态继续，只输出第 N 章 JSON。');
+  L.push('');
+  L.push('## 9. 连续性与纠错');
+  L.push('');
+  L.push('- 每章开头先用一两句话复述关键状态（每个出场人物当前外观、地点、重要道具），再展开分镜与画面。');
+  L.push('- 每章结束后，本章最后一格的 appearance / location / time / props 自动成为下一章的 previous_state。');
+  L.push('- 已完成章节的内容不要改写。如果某章不满意，只重新生成本章，不要改动已生成的章节。');
+  L.push('- 如果某一章的 JSON 不合法或缺少字段，用户会把错误描述发回，例如：“第 3 章缺少 panels/11/participants 字段，请只重新输出第 3 章完整 JSON。”此时只重新输出该章。');
+  L.push('- 如果输出被长度截断，用户会回复“继续”，此时接着输出即可，不要重复已输出的部分。');
+  L.push('- 建议先小规模验证：第 1 章生成并出图满意后，再继续后续章节。');
+  L.push('');
+  return L.join('\n');
+}
+// ==PURE-END==
+
+if (typeof document !== 'undefined' && document.getElementById('tab-create')) (function () {
+  var LS_KEY = 'manga_taskbook_draft_v1';
+  var state = loadDraft() || deepCopy(DEFAULTS);
+
+  function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
+  function $(id) { return document.getElementById(id); }
+  function byId(id) { return $(id); }
+
+  function loadDraft() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      if (!d || typeof d !== 'object') return null;
+      var merged = deepCopy(DEFAULTS);
+      Object.keys(d).forEach(function (k) { if (k in merged) merged[k] = d[k]; });
+      if (!Array.isArray(merged.loras)) merged.loras = [];
+      return merged;
+    } catch (e) { return null; }
+  }
+
+  var saveTimer = null;
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+        var t = new Date();
+        var pad = function (n) { return String(n).padStart(2, '0'); };
+        $('saveStatus').textContent = '已自动保存 ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
+        $('saveStatus').className = 'status';
+      } catch (e) {
+        $('saveStatus').textContent = '自动保存失败：' + e.message;
+        $('saveStatus').className = 'status err';
+      }
+    }, 400);
+  }
+
+  // ---------- tabs ----------
+  var tabBtns = document.querySelectorAll('nav button');
+  tabBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      tabBtns.forEach(function (x) { x.classList.remove('active'); });
+      b.classList.add('active');
+      document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+      $('tab-' + b.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---------- selects ----------
+  function fillSelect(id, values) {
+    var sel = $(id);
+    values.forEach(function (v) {
+      var o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      sel.appendChild(o);
+    });
+  }
+  fillSelect('sampler_name', SAMPLERS);
+  fillSelect('scheduler', SCHEDULERS);
+
+  // ---------- bind fields ----------
+  var TEXT_FIELDS = ['project_name','work_instructions','story','characters','male_lead','female_second','male_second','additional_cast','actions','clothing','locations','art_style','camera','other','quality_prefix','negative_prompt','base_seed'];
+  var NUM_FIELDS = ['width','height','steps','cfg','denoise','chapter_size','chapter_count'];
+
+  function readForm() {
+    TEXT_FIELDS.forEach(function (k) { state[k] = $(k).value; });
+    NUM_FIELDS.forEach(function (k) {
+      var v = $(k).value;
+      state[k] = (v === '' || v === null) ? $(k).value : (String(v).indexOf('.') >= 0 ? parseFloat(v) : parseInt(v, 10));
+      if (typeof state[k] === 'number' && isNaN(state[k])) state[k] = DEFAULTS[k];
+    });
+    state.sampler_name = $('sampler_name').value;
+    state.scheduler = $('scheduler').value;
+    state.caption_enabled = $('caption_enabled').checked;
+    scheduleSave();
+    updateTotal();
+  }
+
+  function writeForm() {
+    TEXT_FIELDS.forEach(function (k) { if ($(k)) $(k).value = (state[k] === undefined ? '' : state[k]); });
+    NUM_FIELDS.forEach(function (k) { if ($(k)) $(k).value = state[k]; });
+    $('sampler_name').value = state.sampler_name;
+    $('scheduler').value = state.scheduler;
+    $('caption_enabled').checked = !!state.caption_enabled;
+    renderLoraList();
+    updateTotal();
+  }
+
+  function updateTotal() {
+    var cs = parseInt(state.chapter_size, 10) || 0;
+    var cc = parseInt(state.chapter_count, 10) || 0;
+    var total = cs * cc;
+    var el = $('totalDisplay');
+    el.value = total + ' 张' + (total > 500 ? '（超出 500 上限！）' : '');
+    el.style.color = total > 500 ? 'var(--err)' : 'var(--accent)';
+  }
+
+  TEXT_FIELDS.concat(NUM_FIELDS).forEach(function (k) {
+    var el = $(k);
+    if (!el) return;
+    el.addEventListener('input', readForm);
+    el.addEventListener('change', readForm);
+  });
+  ['sampler_name','scheduler','caption_enabled'].forEach(function (k) {
+    $(k).addEventListener('input', readForm);
+    $(k).addEventListener('change', readForm);
+  });
+
+  // ---------- lora list ----------
+  function renderLoraList() {
+    var box = $('loraList');
+    box.innerHTML = '';
+    state.loras.forEach(function (l, i) {
+      var row = document.createElement('div');
+      row.className = 'lora-row';
+      var name = document.createElement('input');
+      name.type = 'text'; name.placeholder = 'LoRA 名称'; name.value = l.name || '';
+      var trig = document.createElement('input');
+      trig.type = 'text'; trig.placeholder = '触发词（英文，逗号分隔）'; trig.value = l.trigger || '';
+      var note = document.createElement('input');
+      note.type = 'text'; note.placeholder = '备注/强度'; note.value = l.note || '';
+      note.style.maxWidth = '130px';
+      var del = document.createElement('button');
+      del.className = 'btn ghost small fit'; del.textContent = '删除';
+      name.addEventListener('input', function () { state.loras[i].name = name.value; scheduleSave(); });
+      trig.addEventListener('input', function () { state.loras[i].trigger = trig.value; scheduleSave(); });
+      note.addEventListener('input', function () { state.loras[i].note = note.value; scheduleSave(); });
+      del.addEventListener('click', function () { state.loras.splice(i, 1); renderLoraList(); scheduleSave(); });
+      row.appendChild(name); row.appendChild(trig); row.appendChild(note); row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+
+  $('btnAddLora').addEventListener('click', function () {
+    state.loras.push({ name: '', trigger: '', note: '' });
+    renderLoraList(); scheduleSave();
+  });
+
+  $('btnBuildPrefix').addEventListener('click', function () {
+    readForm();
+    var parts = [];
+    state.loras.forEach(function (l) {
+      var t = (l.trigger || '').trim();
+      if (t) parts.push(t);
+    });
+    var manual = (state.quality_prefix || '').trim();
+    var base = 'masterpiece, best quality, score_7, safe';
+    var joined = [base].concat(parts).join(', ');
+    if (manual && manual !== joined) {
+      state.quality_prefix = joined + ', ' + manual.replace(/^masterpiece, best quality, score_7, safe,?\s*/i, '');
+    } else {
+      state.quality_prefix = joined;
+    }
+    $('quality_prefix').value = state.quality_prefix;
+    scheduleSave();
+  });
+
+  // ---------- reference import ----------
+  $('refFile').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var target = $('refTarget').value;
+      $(target).value = String(reader.result || '').replace(/^\uFEFF/, '');
+      readForm();
+    };
+    reader.readAsText(f, 'utf-8');
+    this.value = '';
+  });
+
+  // ---------- example / reset ----------
+  $('btnFillExample').addEventListener('click', function () {
+    state = deepCopy(EXAMPLE_STATE);
+    writeForm(); scheduleSave();
+  });
+  $('btnReset').addEventListener('click', function () {
+    if (!confirm('恢复默认将清空当前全部输入（LoRA 列表也会清空），确定？')) return;
+    state = deepCopy(DEFAULTS);
+    writeForm(); scheduleSave();
+  });
+
+  // ---------- output ----------
+  var currentBook = '';
+  $('btnGenerate').addEventListener('click', function () {
+    readForm();
+    var problems = validate(state);
+    if (problems.length) {
+      $('genStatus').textContent = problems[0];
+      $('genStatus').className = 'status err';
+      $('preview').textContent = '';
+      return;
+    }
+    currentBook = buildTaskBook(state);
+    $('preview').textContent = currentBook;
+    $('genStatus').textContent = '已生成（' + currentBook.length + ' 字符）';
+    $('genStatus').className = 'status';
+    renderTurns();
+    renderSeeds();
+  });
+
+  function validate(s) {
+    var p = [];
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(s.project_name || '')) p.push('项目名需为 1–64 个英文字母、数字、下划线或短横线');
+    if (!(s.story || '').trim()) p.push('请填写故事主线');
+    var cs = parseInt(s.chapter_size, 10), cc = parseInt(s.chapter_count, 10);
+    if (!(cs >= 5 && cs <= 20)) p.push('每章张数需为 5–20');
+    if (!(cc >= 1 && cc <= 100)) p.push('章节数需为 1–100');
+    if (cs * cc > 500) p.push('总张数超过 500 上限');
+    var w = parseInt(s.width, 10), h = parseInt(s.height, 10);
+    if (!(w >= 256 && w <= 4096) || w % 8 !== 0) p.push('宽度需为 256–4096 之间 8 的倍数');
+    if (!(h >= 256 && h <= 4096) || h % 8 !== 0) p.push('高度需为 256–4096 之间 8 的倍数');
+    var bs = String(s.base_seed).trim();
+    if (bs !== '-1' && !/^\d+$/.test(bs)) p.push('Seed 基数需为 -1 或非负整数');
+    return p;
+  }
+
+  function renderTurns() {
+    var box = $('turnList');
+    box.innerHTML = '';
+    turnScript(state).forEach(function (line, i) {
+      var parts = line.split(' · ');
+      var row = document.createElement('div');
+      row.className = 'turn-row';
+      var label = document.createElement('div');
+      label.className = 't';
+      label.innerHTML = '<b>' + escapeHtml(parts[0]) + '</b> · ' + escapeHtml(parts.slice(1).join(' · '));
+      var btn = document.createElement('button');
+      btn.className = 'btn ghost small fit';
+      btn.textContent = '复制指令';
+      var msg = parts.slice(1).join(' · ');
+      btn.addEventListener('click', function () { copyText(msg, btn); });
+      row.appendChild(label); row.appendChild(btn);
+      box.appendChild(row);
+    });
+  }
+
+  function renderSeeds() {
+    var box = $('seedBox');
+    var text = seedLines(state);
+    if (String(state.base_seed).trim() === '-1' || text.indexOf('（') === 0) {
+      box.innerHTML = '<p style="color:var(--muted);font-size:13.5px">' + escapeHtml(text) + '</p>';
+      return;
+    }
+    var rows = text.split('\n').map(function (l) { return l.replace(/^- /, ''); });
+    var html = '<table class="seeds"><tr><th style="width:190px">范围</th><th>种子</th></tr>';
+    rows.forEach(function (r) {
+      var idx = r.indexOf('：');
+      html += '<tr><td>' + escapeHtml(r.slice(0, idx)) + '</td><td>' + escapeHtml(r.slice(idx + 1)) + '</td></tr>';
+    });
+    box.innerHTML = html + '</table>';
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function copyText(text, btn) {
+    function done(ok) {
+      if (!btn) return;
+      var old = btn.textContent;
+      btn.textContent = ok ? '已复制' : '复制失败，请手动选择';
+      setTimeout(function () { btn.textContent = old; }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { fallback(); });
+    } else fallback();
+    function fallback() {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        done(ok);
+      } catch (e) { done(false); }
+    }
+  }
+
+  $('btnCopyBook').addEventListener('click', function () {
+    if (!currentBook) { $('genStatus').textContent = '请先生成任务书'; $('genStatus').className = 'status warn'; return; }
+    copyText(currentBook, this);
+  });
+
+  $('btnDownload').addEventListener('click', function () {
+    if (!currentBook) { $('genStatus').textContent = '请先生成任务书'; $('genStatus').className = 'status warn'; return; }
+    try {
+      var blob = new Blob([currentBook], { type: 'text/markdown;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = (state.project_name || 'comic') + '_任务书.md';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
+      $('genStatus').textContent = '已开始下载';
+      $('genStatus').className = 'status';
+    } catch (e) {
+      $('genStatus').textContent = '下载失败（' + e.message + '），请用「复制任务书全文」后自行保存为 .md';
+      $('genStatus').className = 'status err';
+    }
+  });
+
+  writeForm();
+  scheduleSave();
+})();
+</script>
+</body>
+</html>

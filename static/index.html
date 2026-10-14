@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>漫画产出流水线</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f7f6f3; --card: #ffffff; --line: #e3e1da; --txt: #2c2c2a;
+    --muted: #6f6e69; --acc: #185FA5; --acc-bg: #E6F1FB;
+    --ok: #0F6E56; --ok-bg: #E1F5EE; --bad: #A32D2D; --bad-bg: #FCEBEB;
+    --warn: #854F0B; --warn-bg: #FAEEDA;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--txt); font: 14px/1.6 "Segoe UI", "Microsoft YaHei", sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px; }
+  header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  h1 { font-size: 18px; font-weight: 600; margin-right: 6px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 20px; background: var(--card); border: 0.5px solid var(--line); color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #bbb; }
+  .dot.ok { background: #1D9E75; } .dot.bad { background: #E24B4A; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .tabs button { background: none; border: none; padding: 10px 16px; font-size: 14px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tabs button.on { color: var(--acc); border-bottom-color: var(--acc); font-weight: 600; }
+  .card { background: var(--card); border: 0.5px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .card h3 { font-size: 13.5px; font-weight: 600; margin: 14px 0 8px; color: var(--muted); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  label.f { font-size: 13px; color: var(--muted); }
+  input[type=text], input[type=number], select { font: 13px/1.4 "Segoe UI", "Microsoft YaHei", sans-serif; padding: 7px 10px; border: 0.5px solid var(--line); border-radius: 6px; background: #fff; color: var(--txt); max-width: 100%; }
+  input[type=number] { width: 78px; }
+  select { max-width: 340px; }
+  .btn { font: 13px/1 "Segoe UI", "Microsoft YaHei", sans-serif; padding: 9px 16px; border-radius: 6px; border: 0.5px solid var(--line); background: #fff; color: var(--txt); cursor: pointer; }
+  .btn:hover { border-color: var(--acc); color: var(--acc); }
+  .btn.primary { background: var(--acc); border-color: var(--acc); color: #fff; }
+  .btn.primary:hover { opacity: .9; color: #fff; }
+  .btn.small { padding: 5px 10px; font-size: 12px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .drop { border: 1.5px dashed var(--line); border-radius: 10px; padding: 28px; text-align: center; color: var(--muted); cursor: pointer; transition: .15s; }
+  .drop:hover, .drop.over { border-color: var(--acc); background: var(--acc-bg); color: var(--acc); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .msg { font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; }
+  .msg.err { background: var(--bad-bg); color: var(--bad); }
+  .msg.ok { background: var(--ok-bg); color: var(--ok); }
+  .msg.warn { background: var(--warn-bg); color: var(--warn); }
+  .msg.info { background: var(--acc-bg); color: var(--acc); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-weight: 600; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 7px 8px; border-bottom: 1px solid #f0eee8; vertical-align: top; }
+  .mono { font-family: Consolas, monospace; font-size: 12px; }
+  .clip { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+  .status { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 11.5px; white-space: nowrap; }
+  .st-queued { background: #f0eee8; color: var(--muted); }
+  .st-running { background: var(--warn-bg); color: var(--warn); }
+  .st-done { background: var(--ok-bg); color: var(--ok); }
+  .st-failed { background: var(--bad-bg); color: var(--bad); }
+  .thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 6px; border: 0.5px solid var(--line); cursor: zoom-in; display: block; }
+  .bar { height: 6px; background: #f0eee8; border-radius: 3px; overflow: hidden; margin: 8px 0; }
+  .bar i { display: block; height: 100%; background: var(--acc); transition: width .4s; }
+  details { font-size: 12.5px; color: var(--muted); }
+  details pre { white-space: pre-wrap; word-break: break-all; background: #faf9f6; border: 0.5px solid var(--line); border-radius: 6px; padding: 10px; max-height: 300px; overflow: auto; margin-top: 8px; }
+  .hidden { display: none; }
+  .path { font-family: Consolas, monospace; font-size: 12px; background: #faf9f6; border: 0.5px solid var(--line); border-radius: 6px; padding: 8px 10px; word-break: break-all; }
+  a { color: var(--acc); }
+  iframe.tb { width: 100%; height: 720px; border: 0.5px solid var(--line); border-radius: 8px; background: #fff; }
+  .lora-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .lora-row select { flex: 1; min-width: 240px; max-width: 420px; }
+  .steps { font-size: 12px; color: var(--muted); background: #faf9f6; border: 0.5px solid var(--line); border-radius: 6px; padding: 8px 12px; margin-top: 8px; max-height: 120px; overflow: auto; }
+  .vram { font-size: 12px; color: var(--muted); }
+  .cfg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px 20px; }
+  .cfg-item label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .cfg-item select { width: 100%; max-width: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>漫画产出流水线</h1>
+    <span class="pill" id="pillComfy"><span class="dot" id="dotComfy"></span><span id="comfyLabel">ComfyUI</span></span>
+    <span class="pill vram" id="pillVram">显存 —</span>
+    <button class="btn small" onclick="freeVram()">释放显存</button>
+    <a href="http://127.0.0.1:8188" target="_blank" id="comfyLink" class="pill" style="text-decoration:none">ComfyUI 面板 ↗</a>
+  </header>
+
+  <div class="tabs">
+    <button id="tabBtn0" class="on" onclick="showTab(0)">① 任务书</button>
+    <button id="tabBtn1" onclick="showTab(1)">② ComfyUI 生产</button>
+  </div>
+
+  <!-- ============ TAB 0 任务书 ============ -->
+  <div id="tab0">
+    <div class="card">
+      <h2>任务书生成器</h2>
+      <div class="hint" style="margin-bottom:10px">在下方生成器里填好设定（草稿自动保存），点「生成并下载任务书」存成 md，然后把任务书交给<b>任意 AI</b>（ChatGPT / Claude / 本地模型都行），按其中的输出协议拿回分镜 md，再到标签页 ② 上传生产。</div>
+      <iframe class="tb" id="tbFrame" src="/taskbook/index.html"></iframe>
+      <div class="row" style="margin-top:14px;margin-bottom:0">
+        <button class="btn primary" onclick="downloadTaskbook()">生成并下载任务书 (.md)</button>
+        <button class="btn" onclick="showTab(1)">去生产 →</button>
+        <span class="hint" id="tbHint">会自动重新生成一次任务书并下载最新内容</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 1 ComfyUI 生产 ============ -->
+  <div id="tab1" class="hidden">
+    <div class="card">
+      <h2>模型配置 <button class="btn small" style="float:right" onclick="loadModelOpts()">刷新模型列表</button></h2>
+      <div class="hint" style="margin-bottom:12px">下拉内容实时读取 ComfyUI 的模型目录。改动只影响本次流水线，不动你 ComfyUI 里的任何文件。<b>ComfyUI 没开也能直接生产</b>——流水线会在后台自动拉起（仅 ComfyUI-aki-v3 布局开箱即用，其他安装请先启动 ComfyUI 或用 <span class="mono">--comfy-python/--comfy-main</span> 指定），生产结束后自动关闭；你手动开着的实例会被直接复用，退出时也不会关。</div>
+      <div class="cfg-grid">
+        <div class="cfg-item"><label>主模型（UNET）</label><select id="cfgUnet"></select></div>
+        <div class="cfg-item"><label>UNET 精度</label><select id="cfgDtype"></select></div>
+        <div class="cfg-item"><label>文本编码器（CLIP）</label><select id="cfgClip"></select></div>
+        <div class="cfg-item"><label>CLIP 类型</label><select id="cfgClipType"></select></div>
+        <div class="cfg-item"><label>VAE</label><select id="cfgVae"></select></div>
+        <div class="cfg-item"><label>采样偏移（shift）</label><input type="number" id="cfgShift" step="0.1" style="width:100%"></div>
+      </div>
+      <h3>LoRA（按叠加顺序从上到下）</h3>
+      <div id="loraRows"></div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn small" onclick="addLoraRow()">+ 添加 LoRA</button>
+        <button class="btn small" onclick="resetModelCfg()">恢复模板默认</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>投入分镜 md，自动填进工作流出图</h2>
+      <div class="row">
+        <label class="f"><input type="checkbox" id="autoFree2" checked> 开始前自动清理 ComfyUI 显存（卸载已加载模型）</label>
+        <span class="hint">跑图前清场，避免显存被其他模型占着</span>
+      </div>
+      <div class="drop" id="drop2">
+        <div><b>把分镜 md 拖到这里</b>，或点击选择文件</div>
+        <div class="hint">AI 按任务书输出协议返回的分镜 md（格式示例见仓库里的 示例_第1章.md）</div>
+        <input type="file" id="file2" accept=".md,.txt,.markdown" style="display:none">
+      </div>
+      <div class="row">
+        <label class="f">结果文件夹名</label>
+        <input type="text" id="outName" placeholder="留空则用「第N章」" style="width:220px">
+        <button class="btn primary" id="btnProd" disabled onclick="startProduce()">开始生产</button>
+      </div>
+      <div class="hint">每格的 seed 与提示词取自 md 中的 JSON；负面词缺省用模板值；尺寸/步数/cfg 缺省用模板值（920×1536 / 30 / 5）。</div>
+      <div id="prodMsg"></div>
+    </div>
+
+    <div id="prodCard" class="card hidden">
+      <h2 id="prodTitle">生产进度</h2>
+      <div class="bar"><i id="prodBar" style="width:0%"></i></div>
+      <div class="hint" id="prodStat"></div>
+      <div class="steps" id="prodSteps"></div>
+      <table style="margin-top:12px">
+        <thead><tr><th style="width:52px">格号</th><th style="width:90px">状态</th><th style="width:170px" class="mono">Seed</th><th>提示词</th><th style="width:100px">缩略图</th></tr></thead>
+        <tbody id="prodPanels"></tbody>
+      </table>
+      <div id="prodDone" class="hidden" style="margin-top:14px">
+        <div class="msg ok">全部完成。结果已复制到：</div>
+        <div class="path" id="prodDest"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" onclick="copyText(document.getElementById('prodDest').textContent)">复制路径</button>
+          <span class="hint">manifest.json 里有每格的完整提示词、seed 与所用模型配置</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var S = { tab: 0, taskbook: null,
+          mdText: null, mdName: "", prodJob: null, prodTimer: null,
+          opts: null, cfg: null };
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function $(id){ return document.getElementById(id); }
+function copyText(t){ navigator.clipboard.writeText(t).then(function(){ alert("已复制"); }); }
+function fmtGB(b){ return b==null ? "—" : (b/1073741824).toFixed(1) + " GB"; }
+
+function showTab(n){
+  S.tab = n;
+  for (var i=0;i<2;i++){
+    $("tab"+i).classList.toggle("hidden", n!==i);
+    $("tabBtn"+i).classList.toggle("on", n===i);
+  }
+  if(n===1){ loadModelOpts(); }
+}
+
+/* ---------- 状态 ---------- */
+function pollStatus(){
+  fetch("/api/status").then(function(r){return r.json()}).then(function(d){
+    $("dotComfy").className = "dot " + (d.comfy ? "ok" : "bad");
+    var eng = d.engine || {};
+    $("comfyLabel").textContent = d.comfy
+      ? (eng.owned ? "ComfyUI · 流水线托管" : "ComfyUI · 外部实例（不会动它）")
+      : (eng.pid ? "ComfyUI · 正在启动…" : "ComfyUI · 未运行（自动拉起）");
+    if(d.vram) $("pillVram").textContent = "显存空闲 " + fmtGB(d.vram.free) + " / " + fmtGB(d.vram.total);
+    else $("pillVram").textContent = "显存 —";
+    if(d.comfy_url) $("comfyLink").href = d.comfy_url;
+  }).catch(function(){});
+}
+setInterval(pollStatus, 5000); pollStatus();
+
+function freeVram(){
+  $("pillVram").textContent = "释放中…";
+  fetch("/api/free", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({what:"comfy"})})
+    .then(function(r){return r.json()}).then(function(d){
+      alert((d.steps||[]).join("\n") + "\n当前空闲显存：" + fmtGB(d.vram && d.vram.free));
+      pollStatus();
+    }).catch(function(e){ alert("释放失败：" + e); });
+}
+
+/* ---------- TAB 0 任务书 ---------- */
+function downloadTaskbook(){
+  var f = $("tbFrame");
+  var doc;
+  try { doc = f.contentDocument; } catch(e) {}
+  if(!doc){ $("tbHint").textContent = "读取失败：iframe 还未加载完，稍等再试"; return; }
+  // 任务书页内部有自己的 4 个 tab，生成按钮和预览框在「任务书与对话脚本」tab 上，先切过去
+  var navBtn = doc.querySelector('nav button[data-tab="output"]');
+  if(navBtn) navBtn.click();
+  var btn = doc.getElementById("btnGenerate");
+  if(btn) btn.click();
+  var pre = doc.getElementById("preview");
+  var text = pre ? (pre.textContent || pre.innerText || "") : "";
+  if(!text || text.length < 100){
+    $("tbHint").textContent = "任务书内容为空：先在生成器里填内容并点「生成任务书」";
+    return;
+  }
+  S.taskbook = text;
+  var name = "任务书_" + new Date().toISOString().slice(0,10) + ".md";
+  var blob = new Blob([text], {type:"text/markdown"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  $("tbHint").textContent = "已下载 " + name + "（" + text.length + " 字符）。把它交给任意 AI 拿回分镜 md，再到标签页 ② 生产。";
+}
+
+/* ---------- TAB 1 生产 ---------- */
+var drop2 = $("drop2"), file2 = $("file2");
+drop2.onclick = function(){ file2.click(); };
+drop2.ondragover = function(e){ e.preventDefault(); drop2.classList.add("over"); };
+drop2.ondragleave = function(){ drop2.classList.remove("over"); };
+drop2.ondrop = function(e){ e.preventDefault(); drop2.classList.remove("over"); if(e.dataTransfer.files[0]) onFile2({files: e.dataTransfer.files}); };
+file2.onchange = function(){ if(file2.files[0]) onFile2(file2); };
+
+/* ---------- TAB 2 模型配置 ---------- */
+function loadModelOpts(){
+  fetch("/api/model-options").then(function(r){return r.json()}).then(function(d){
+    S.opts = d.options; S.cfg = d.defaults;
+    try {
+      var saved = JSON.parse(localStorage.getItem("anima_pipeline_modelcfg_v1") || "null");
+      if(saved && saved.unet) S.cfg = saved;
+    } catch(e) {}
+    fillSelect("cfgUnet", d.options.unets, S.cfg.unet);
+    fillSelect("cfgDtype", d.options.weight_dtypes, S.cfg.weight_dtype);
+    fillSelect("cfgClip", d.options.clips, S.cfg.clip);
+    fillSelect("cfgClipType", d.options.clip_types, S.cfg.clip_type);
+    fillSelect("cfgVae", d.options.vaes, S.cfg.vae);
+    $("cfgShift").value = S.cfg.shift;
+    renderLoraRows();
+  }).catch(function(e){ $("prodMsg").innerHTML = '<div class="msg err">读取模型列表失败：ComfyUI 未运行或刚启动还没就绪。开始生产时会自动拉起 ComfyUI，就绪后点模型配置卡右上角「刷新模型列表」重试。</div>'; });
+}
+
+function fillSelect(id, list, val){
+  var s = $(id);
+  s.innerHTML = "";
+  (list||[]).forEach(function(v){
+    var o = document.createElement("option");
+    o.value = v; o.textContent = v;
+    s.appendChild(o);
+  });
+  if(val && (list||[]).indexOf(val) < 0){
+    var o = document.createElement("option");
+    o.value = val; o.textContent = val + "（模板默认，目录中未找到）";
+    s.appendChild(o);
+  }
+  s.value = val;
+}
+
+function renderLoraRows(){
+  var box = $("loraRows");
+  box.innerHTML = "";
+  (S.cfg.loras||[]).forEach(function(l, i){
+    var row = document.createElement("div");
+    row.className = "lora-row";
+    var cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = l.enabled !== false;
+    cb.onchange = function(){ S.cfg.loras[i].enabled = cb.checked; saveCfg(); };
+    var sel = document.createElement("select");
+    (S.opts.loras||[]).forEach(function(n){
+      var o = document.createElement("option");
+      o.value = n; o.textContent = n; sel.appendChild(o);
+    });
+    if(S.opts.loras.indexOf(l.name) < 0){
+      var o = document.createElement("option");
+      o.value = l.name; o.textContent = l.name + "（目录中未找到）"; sel.appendChild(o);
+    }
+    sel.value = l.name;
+    sel.onchange = function(){ S.cfg.loras[i].name = sel.value; saveCfg(); };
+    var num = document.createElement("input");
+    num.type = "number"; num.step = "0.05"; num.min = "-2"; num.max = "2"; num.value = l.strength;
+    num.style.width = "80px";
+    num.onchange = function(){ S.cfg.loras[i].strength = parseFloat(num.value)||0; saveCfg(); };
+    var del = document.createElement("button");
+    del.className = "btn small"; del.textContent = "删除";
+    del.onclick = function(){ S.cfg.loras.splice(i,1); renderLoraRows(); saveCfg(); };
+    row.appendChild(cb); row.appendChild(sel); row.appendChild(num); row.appendChild(del);
+    box.appendChild(row);
+  });
+}
+
+function addLoraRow(){
+  if(!S.cfg) return;
+  S.cfg.loras.push({name: (S.opts.loras||[])[0] || "", strength: 0.8, enabled: true});
+  renderLoraRows(); saveCfg();
+}
+
+function resetModelCfg(){
+  fetch("/api/model-options").then(function(r){return r.json()}).then(function(d){
+    S.cfg = d.defaults;
+    fillSelect("cfgUnet", d.options.unets, S.cfg.unet);
+    fillSelect("cfgDtype", d.options.weight_dtypes, S.cfg.weight_dtype);
+    fillSelect("cfgClip", d.options.clips, S.cfg.clip);
+    fillSelect("cfgClipType", d.options.clip_types, S.cfg.clip_type);
+    fillSelect("cfgVae", d.options.vaes, S.cfg.vae);
+    $("cfgShift").value = S.cfg.shift;
+    renderLoraRows(); saveCfg();
+  });
+}
+
+function saveCfg(){
+  if(!S.cfg) return;
+  S.cfg.unet = $("cfgUnet").value;
+  S.cfg.weight_dtype = $("cfgDtype").value;
+  S.cfg.clip = $("cfgClip").value;
+  S.cfg.clip_type = $("cfgClipType").value;
+  S.cfg.vae = $("cfgVae").value;
+  S.cfg.shift = parseFloat($("cfgShift").value) || 3;
+  localStorage.setItem("anima_pipeline_modelcfg_v1", JSON.stringify(S.cfg));
+}
+
+/* ---------- 生产 ---------- */
+function setMd(text, name){
+  S.mdText = text; S.mdName = name;
+  $("btnProd").disabled = !text;
+  var m = text.match(/"chapter":\s*(\d+)/);
+  if(m && !$("outName").value) $("outName").placeholder = "留空则用「第" + m[1] + "章」";
+}
+
+function onFile2(inp){
+  if(!inp.files[0]) return;
+  var r = new FileReader();
+  r.onload = function(){ setMd(r.result, inp.files[0].name); };
+  r.readAsText(inp.files[0], "utf-8");
+}
+
+function startProduce(){
+  if(!S.mdText) return;
+  saveCfg();
+  $("btnProd").disabled = true; $("prodMsg").innerHTML = ""; $("prodDone").classList.add("hidden");
+  $("prodSteps").textContent = "";
+  fetch("/api/produce/start", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({text: S.mdText, out_name: $("outName").value.trim(),
+                          auto_free: $("autoFree2").checked, model_cfg: S.cfg})})
+    .then(function(r){return r.json()}).then(function(d){
+      if(d.error){ $("prodMsg").innerHTML = '<div class="msg err">' + esc(d.error) + "</div>"; $("btnProd").disabled = false; return; }
+      S.prodJob = d.job;
+      $("prodCard").classList.remove("hidden");
+      S.prodTimer = setInterval(pollJobs, 1500); pollJobs();
+    }).catch(function(e){ $("prodMsg").innerHTML = '<div class="msg err">' + esc(String(e)) + "</div>"; $("btnProd").disabled = false; });
+}
+
+var ST = {queued:"排队中", running:"生成中", done:"完成", failed:"失败"};
+function pollJobs(){
+  fetch("/api/jobs").then(function(r){return r.json()}).then(function(d){
+    var job = null;
+    (d.jobs||[]).forEach(function(j){ if(j.id === S.prodJob) job = j; });
+    if(!job) return;
+    var ps = job.panels || [];
+    $("prodTitle").textContent = "生产进度 · " + (job.name || "");
+    var done = 0, failed = 0;
+    ps.forEach(function(p){ if(p.status==="done") done++; if(p.status==="failed") failed++; });
+    $("prodBar").style.width = (ps.length ? Math.round((done+failed)/ps.length*100) : 0) + "%";
+    $("prodStat").textContent = done + "/" + ps.length + " 完成" + (failed ? "，" + failed + " 失败" : "");
+    if(job.steps && job.steps.length) $("prodSteps").textContent = job.steps.join("\n");
+    var rows = "";
+    ps.forEach(function(p){
+      var img = p.url ? '<img class="thumb" src="' + p.url + '" onclick="window.open(this.src)">' : "";
+      rows += "<tr><td class='mono'>" + esc(p.id) + "</td>" +
+        "<td><span class='status st-" + p.status + "'>" + (ST[p.status]||p.status) + "</span>" +
+        (p.error ? '<div class="hint" style="color:var(--bad)">' + esc(p.error) + "</div>" : "") + "</td>" +
+        "<td class='mono'>" + esc(p.seed) + "</td>" +
+        "<td><div class='clip' title='" + esc(p.prompt) + "'>" + esc(p.prompt) + "</div></td>" +
+        "<td>" + img + "</td></tr>";
+    });
+    $("prodPanels").innerHTML = rows;
+    if(job.state === "done"){
+      clearInterval(S.prodTimer); $("btnProd").disabled = false;
+      if(job.dest){ $("prodDone").classList.remove("hidden"); $("prodDest").textContent = job.dest; }
+    } else if(job.state === "error"){
+      clearInterval(S.prodTimer); $("btnProd").disabled = false;
+      $("prodMsg").innerHTML = '<div class="msg err">' + esc(job.error||"未知错误").replace(/\n/g,"<br>") + "</div>";
+    }
+  }).catch(function(){});
+}
+</script>
+</body>
+</html>

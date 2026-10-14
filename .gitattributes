@@ -1,0 +1,5 @@
+# 统一换行，避免跨平台 diff 抖动
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

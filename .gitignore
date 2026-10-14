@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# 运行时产物
+logs/
+结果/
+产出/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 发布工具（含账号/仓库配置，本地专用）
+.gh_publish.py
